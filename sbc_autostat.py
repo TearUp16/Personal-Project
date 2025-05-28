@@ -1,60 +1,72 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
+import xlwt
+from io import BytesIO
 from datetime import datetime
-import io
 
-def process_file(uploaded_file):
-    df = pd.read_excel(uploaded_file, header=None)
+def df_to_xls_download(df, container):
+    wb = xlwt.Workbook()
+    ws = wb.add_sheet('Sheet1')
 
-    # to rename the first column to 'chCode'
-    df.columns = ['chCode']
-    
-    # Columns
-    df['status'] = 'RETURNS'
-    df['substatus'] = 'PULLOUT'
-    df['amount'] = ''
-    df['start_date'] = ''
-    df['end_date'] = ''
-    df['or_number'] = ''
-    df['notes'] = "END OF HANDLING PERIOD"
-    df['new_address'] = ''
-    df['new_contact'] = ''
-    df['agent'] = 'POUT'
-    
-    df['barcode_date'] = datetime.now().strftime('%m/%d/%y %I:%M %p')
-    
-    return df
+    # Write header
+    for col_idx, col_name in enumerate(df.columns):
+        ws.write(0, col_idx, col_name)
 
-def autostat_fcl():
+    # Write data rows
+    for row_idx, row in enumerate(df.itertuples(index=False), start=1):
+        for col_idx, value in enumerate(row):
+            ws.write(row_idx, col_idx, value)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    today_str = datetime.today().strftime('%Y-%m-%d')
+    filename = f'AUTO STATUS{today_str}.xls'
+
+    container.download_button(
+        label="DOWNLOAD AUTOSTAT",
+        data=output,
+        file_name=filename,
+        mime="application/vnd.ms-excel"
+    )
+
+def sbc_autostat(main_df):
     container = st.container(border=True)
-    container.subheader("SBC AUTOSTAT")
-    container.write("UPLOAD YOUR EXCEL FILE HERE")
 
-    # Uploader
-    uploaded_file = container.file_uploader("Choose a file", type=["xlsx"])
-    
-    if uploaded_file is not None:
-        df = process_file(uploaded_file)
+    with container:
+        st.subheader("FOR AUTOSTAT")
 
-        # Choices for account type
-        special_choices = ["FCL PEJF", "FCL NOF", "FCL 2ND", "FCL 3RD"]
-        user_choice = container.selectbox("Account Type", special_choices)
-        user_date = container.date_input("Select Date")
+    # Filter the main_df for pullout accounts (Days Activ == 'FOR PULL OUT' or >=16)
+    # Convert Days Activ to numeric where possible for comparison
+    days_col = main_df['Days Activ']
+    mask_for_pullout = (days_col == 'FOR PULL OUT') | (pd.to_numeric(days_col, errors='coerce') >= 16)
+    filtered = main_df[mask_for_pullout].copy()
 
-        # Apply the user's choices to the special column
-        df['notes'] = df['notes'] + f" {user_choice} {user_date.strftime('%m/%d/%Y')}"
+    if filtered.empty:
+        container.warning("No accounts with 'FOR PULL OUT' status found.")
+        return
 
-        container.write("Processed Data:")
-        container.dataframe(df)
+    # User picks the date for notes column
+    user_date = container.date_input("SELECT DATE OF EXPIRATION:", datetime.today())
 
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Sheet1')
-        output.seek(0)
+    # Create new DataFrame with requested headers and rules
+    export_df = pd.DataFrame({
+        'chcode': filtered['CH CODE'].values,
+        'status': 'RETURNS',
+        'substatus': 'PULLOUT',
+        'amount': '',
+        'start_date': '',
+        'end_date': '',
+        'or_number': '',
+        'notes': f"END OF HANDLING PERIOD {user_date.strftime('%m/%d/%Y')}",
+        'new_address': '',
+        'new_contact': '',
+        'agent': 'POUT',
+        'barcode_date': datetime.now().strftime('%m/%d/%y %I:%M %p')
+    })
 
-        container.download_button(
-            label="Download File",
-            data=output,
-            file_name="AUTOSTAT_POUT.xls",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+    container.subheader("Export Data Preview")
+    container.dataframe(export_df)
+
+    df_to_xls_download(export_df, container)

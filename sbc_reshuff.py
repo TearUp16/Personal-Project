@@ -26,10 +26,15 @@ def df_to_xls_download(df, container):
     )
 
 def sbc_reshuff(df):
-    filtered_df = df[df['Days Activ'] == 'FOR PULL OUT'].copy()
-    filtered_df['POUT'] = 'POUT'
-
     container = st.container(border=True)
     container.subheader("FOR RESHUFF")
+    filtered_df = df[df['Days Activ'] == 'FOR PULL OUT'].copy()
+
+    if filtered_df.empty:
+        container.warning("No accounts with 'FOR PULL OUT' status found.")
+        return
+
+    filtered_df['POUT'] = 'POUT'
+    
     container.dataframe(filtered_df[['CH CODE', 'POUT']])
     df_to_xls_download(filtered_df[['CH CODE', 'POUT']], container)
