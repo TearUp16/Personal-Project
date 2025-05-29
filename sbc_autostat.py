@@ -1,34 +1,24 @@
 import streamlit as st
 import pandas as pd
-import xlwt
+import openpyxl
 from io import BytesIO
 from datetime import datetime
 
-def df_to_xls_download(df, container):
-    wb = xlwt.Workbook()
-    ws = wb.add_sheet('Sheet1')
-
-    # Write header
-    for col_idx, col_name in enumerate(df.columns):
-        ws.write(0, col_idx, col_name)
-
-    # Write data rows
-    for row_idx, row in enumerate(df.itertuples(index=False), start=1):
-        for col_idx, value in enumerate(row):
-            ws.write(row_idx, col_idx, value)
-
+def df_to_xls_download(df, container):   
     output = BytesIO()
-    wb.save(output)
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Sheet1')    
     output.seek(0)
 
     today_str = datetime.today().strftime('%Y-%m-%d')
-    filename = f'AUTO STATUS{today_str}.xls'
+    filename = f'AUTO STATUS{today_str}.xlsx'
 
     container.download_button(
         label="DOWNLOAD AUTOSTAT",
         data=output,
         file_name=filename,
-        mime="application/vnd.ms-excel"
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
     )
 
 def sbc_autostat(main_df):
@@ -44,7 +34,7 @@ def sbc_autostat(main_df):
     filtered = main_df[mask_for_pullout].copy()
 
     if filtered.empty:
-        container.warning("No accounts with 'FOR PULL OUT' status found.")
+        container.info("No accounts with 'FOR PULL OUT' status found.")
         return
 
     # User picks the date for notes column
@@ -66,7 +56,7 @@ def sbc_autostat(main_df):
         'barcode_date': datetime.now().strftime('%m/%d/%y %I:%M %p')
     })
 
-    container.subheader("Export Data Preview")
+    container.subheader("FOR IMPORT")
     container.dataframe(export_df)
 
     df_to_xls_download(export_df, container)

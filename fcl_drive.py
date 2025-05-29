@@ -19,8 +19,48 @@ COLUMNS_TO_COPY = [
     "Pri Area",
     "Pri City/Muni"
 ]
+
+LUZON_AREAS = [
+    "BAGUIO",
+    "BATANGAS",
+    "CALAMBA",
+    "DAGUPAN",
+    "LA UNION",
+    "LAUNION",
+    "MALOLOS",
+    "PAMPANGA"
+]
+
+VISAYAS_AREAS = [
+    "BACOLOD",
+    "CEBU NORTH",
+    "CEBUNORTH",
+    "CEBU SOUTH",
+    "CEBUSOUTH",
+    "ILOILO",
+    "ILO-ILO",
+    "ILO ILO"
+]
+
+MINDANAO_AREAS = [
+    "CAGAYAN",
+    "CAGAYAN DE ORO",
+    "DAVAO",
+    "GEN SANTOS",
+    "GENSAN",
+    "GENERAL SANTOS",
+    "PAGADIAN",
+    "TAGUM",
+    "ZAMBOANGA"
+]
+
+# Normalize area lists to uppercase and strip spaces
+LUZON_AREAS = [a.upper().strip() for a in LUZON_AREAS]
+VISAYAS_AREAS = [a.upper().strip() for a in VISAYAS_AREAS]
+MINDANAO_AREAS = [a.upper().strip() for a in MINDANAO_AREAS]
+
 def fcl_drive_for_input():
-    container = st.container(border=True) 
+    container = st.container(border=True)
     container.subheader("FOR INPUT DATA IN FCL DRIVE")
     container.write("UPLOAD YOUR 'BCRM UPLOAD' FILE HERE")
 
@@ -32,11 +72,11 @@ def fcl_drive_for_input():
             if file_extension == ".xls":
                 df = pd.read_excel(uploaded_file, engine="xlrd", index_col=False)
             else:
-                df = pd.read_excel(uploaded_file, index_col=False)
+                df = pd.read_excel(uploaded_file, engine="openpyxl", index_col=False)
 
             if "HlidNo" in df.columns:
                 df["HlidNo"] = df["HlidNo"].astype(str)
-                
+
         except Exception as e:
             container.error(f"Error reading Excel file: {e}")
         else:
@@ -44,19 +84,44 @@ def fcl_drive_for_input():
             if missing_cols:
                 container.error(f"The following columns are missing in the uploaded file: {', '.join(missing_cols)}")
             else:
-                cleaned_df = df[COLUMNS_TO_COPY]
+                cleaned_df = df[COLUMNS_TO_COPY].copy()
                 cleaned_df["MidName"] = cleaned_df["MidName"].astype(str).str[0]
+
+                # Normalize AREA column: uppercase, strip, replace multiple spaces with single space
+                cleaned_df["AREA"] = (
+                    cleaned_df["AREA"]
+                    .astype(str)
+                    .str.upper()
+                    .str.strip()
+                    .str.replace(r"\s+", " ", regex=True)
+                )
+
                 container.subheader("Cleaned Data")
                 container.dataframe(cleaned_df)
 
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    cleaned_df.to_excel(writer, index=False, sheet_name="Cleaned Data")
-                processed_data = output.getvalue()
+                def create_excel_for_areas(area_list, file_label):
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                        # Filter data belonging to the given areas
+                        area_df = cleaned_df[cleaned_df["AREA"].isin(area_list)]
+                        if not area_df.empty:
+                            # Write all data to a single sheet named after the label
+                            sheet_name = file_label[:31]  # Excel sheet name limit
+                            area_df.to_excel(writer, index=False, sheet_name=sheet_name)
+                    return output.getvalue()
 
-                container.download_button(
-                    label="Download File",
-                    data=processed_data,
-                    file_name="FOR INPUT IN FCL DRIVE.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+                for areas_group, label in [
+                    (LUZON_AREAS, "LUZON"),
+                    (VISAYAS_AREAS, "VISAYAS"),
+                    (MINDANAO_AREAS, "MINDANAO")
+                ]:
+                    if cleaned_df['AREA'].isin(areas_group).any():
+                        excel_data = create_excel_for_areas(areas_group, label)
+                        container.download_button(
+                            label=f"Download {label} Excel",
+                            data=excel_data,
+                            file_name=f"FCL {label}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+                    else:
+                        container.write(f"No data for {label}")

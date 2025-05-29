@@ -9,12 +9,13 @@ from pif_autostat import autostat_fcl
 from sbc_reshuff import sbc_reshuff
 from sbc_autostat import sbc_autostat
 
-
+# CONNECTION TO QUERY------------------------------------------------------------------------------------------------
 def read_sql_query(filename):
     with open(filename, 'r') as file:
         query = file.read()
     return query
 
+# CREDENTIALS TO ODBC------------------------------------------------------------------------------------------------
 conn_str = (
     "Driver={MySQL ODBC 5.1 Driver};"
     "Server=192.168.15.197;"
@@ -25,7 +26,7 @@ conn_str = (
 
 conn = pyodbc.connect(conn_str)
 
-# Sidebar Campaign Selection
+# SIDEBAR CAMPAIGN SELECTION------------------------------------------------------------------------------------------------
 st.sidebar.title("CAMPAIGN AUTOMATIONS")
 selected_category = st.sidebar.selectbox(
     "SELECT CAMPAIGN",
@@ -36,6 +37,7 @@ selected_task = st.sidebar.selectbox(
     ["ENDORSEMENT", "PULLOUTS", "PTP"]
 )
 
+# ENDORSEMENT FCL------------------------------------------------------------------------------------------------
 if selected_task == "ENDORSEMENT":
     if selected_category == "FORECLOSURE":
         st.title("FORECLOSURE")
@@ -57,10 +59,12 @@ if selected_task == "ENDORSEMENT":
         elif fcl_page == "PIF LEGAL WEBSITE IMPORT FILE":
             pif_legal_website_import_file()
 
+# ENDORSEMENT SBC HOMELOAN------------------------------------------------------------------------------------------------
     elif selected_category == "SBC HOMELOAN":
         st.title("SBC HOMELOAN")
         sbc_homeloan = st.selectbox("SELECT AUTOMATION", ["SBC ENDORSEMENT"])
 
+# PULLOUTS/AUTOSTATS FCL------------------------------------------------------------------------------------------------
 elif selected_task == "PULLOUTS":
     if selected_category == "FORECLOSURE":
         st.title("FORECLOSURE")
@@ -71,6 +75,7 @@ elif selected_task == "PULLOUTS":
         if fcl_page == "AUTOSTAT FOR FCL":
             autostat_fcl()
 
+# PULLOUTS/AUTOSTAT SBC HOMELOAN------------------------------------------------------------------------------------------------
     elif selected_category == "SBC HOMELOAN":
         st.title("SBC HOMELOAN")
         sbc_homeloan = st.selectbox(
@@ -84,34 +89,35 @@ elif selected_task == "PULLOUTS":
     
             warning_needed = False
 
-            # Check for "FOR PULL OUT" string
-    if (sbc_for_pouts_remarks_df['Days Activ'] == 'FOR PULL OUT').any():
-        warning_needed = True
-    else:
-        # Convert to numeric with errors coerced to NaN
-        numeric_days = pd.to_numeric(sbc_for_pouts_remarks_df['Days Activ'], errors='coerce')
-        if (numeric_days >= 16).any():
+            # THIS CHECKS THE "FOR PULL OUT"------------------------------------------------------------------------------------------------
+        if (sbc_for_pouts_remarks_df['Days Activ'] == 'FOR PULL OUT').any():
             warning_needed = True
+        else:
+            numeric_days = pd.to_numeric(sbc_for_pouts_remarks_df['Days Activ'], errors='coerce')
+            if (numeric_days >= 16).any():
+                warning_needed = True
 
-    if warning_needed:
-        container.warning("⚠️ NOTE: There are accounts with 16 days or more (FOR PULL OUT).")
+        if warning_needed:
+            container.warning("⚠️ NOTE: There are accounts with 16 days or more (FOR PULL OUT).")
 
-    container.subheader("SBC HL DATABASE")
-    container.dataframe(sbc_for_pouts_remarks_df)
+        container.subheader("SBC HL DATABASE")
+        container.dataframe(sbc_for_pouts_remarks_df)
 
-    container.download_button(
-        label="DOWNLOAD DATABASE",
-        data=sbc_for_pouts_remarks_df.to_csv(index=False).encode('utf-8'),
-        file_name='cbs_remarks.csv',
-        mime='text/csv'
-    )
-    sbc_reshuff(sbc_for_pouts_remarks_df)
-    sbc_autostat(sbc_for_pouts_remarks_df)
+        container.download_button(
+            label="DOWNLOAD DATABASE",
+            data=sbc_for_pouts_remarks_df.to_csv(index=False).encode('utf-8'),
+            file_name='SBC_REPORT.csv',
+            mime='text/csv'
+        )
+        sbc_reshuff(sbc_for_pouts_remarks_df)
+        sbc_autostat(sbc_for_pouts_remarks_df)
 
+# PTP FCL------------------------------------------------------------------------------------------------
 elif selected_task == "PTP":
     if selected_category == "FORECLOSURE":
         st.write("COMING SOON")
 
+#PTP SBC HOMELOAN------------------------------------------------------------------------------------------------
     elif selected_category == "SBC HOMELOAN":
         st.title("SBC HOMELOAN")
         st.write("COMING SOON")

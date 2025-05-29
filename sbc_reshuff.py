@@ -1,28 +1,23 @@
 import streamlit as st
 from io import BytesIO
-import xlwt
 from datetime import datetime
+import pandas as pd
+import openpyxl
 
-def df_to_xls_download(df, container):
-    wb = xlwt.Workbook()
-    ws = wb.add_sheet('Sheet1')
-
-    for row_idx, row in enumerate(df.itertuples(index=False)):
-        for col_idx, value in enumerate(row):
-            ws.write(row_idx, col_idx, value)
-
+def df_to_xlsx_download(df, container):
     output = BytesIO()
-    wb.save(output)
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Sheet1', header=False)
     output.seek(0)
 
     today_str = datetime.today().strftime('%Y.%m.%d')
-    filename = f'POUT {today_str}.xls'
+    filename = f'POUT {today_str}.xlsx'
 
     container.download_button(
         label="DOWNLOAD POUTS",
         data=output,
         file_name=filename,
-        mime="application/vnd.ms-excel"
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
 def sbc_reshuff(df):
@@ -31,10 +26,10 @@ def sbc_reshuff(df):
     filtered_df = df[df['Days Activ'] == 'FOR PULL OUT'].copy()
 
     if filtered_df.empty:
-        container.warning("No accounts with 'FOR PULL OUT' status found.")
+        container.info("No accounts with 'FOR PULL OUT' status found.")
         return
 
     filtered_df['POUT'] = 'POUT'
     
     container.dataframe(filtered_df[['CH CODE', 'POUT']])
-    df_to_xls_download(filtered_df[['CH CODE', 'POUT']], container)
+    df_to_xlsx_download(filtered_df[['CH CODE', 'POUT']], container)

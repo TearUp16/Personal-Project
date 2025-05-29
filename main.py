@@ -1,5 +1,5 @@
 import streamlit as st
-# Download this first: xlwt
+# Download this first: xlwt streamlit pyodbc xlrd xlsxwriter sqlalchemy pymysql matplotlib plotly
 
 st.set_page_config(
     page_title="Campaign Automations",
