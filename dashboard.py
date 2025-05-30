@@ -9,7 +9,7 @@ import numpy as np
 st.markdown("""
     <h1 style="
         text-align: center; 
-        border: 3px solid #000000;
+        border: 3px solid #2E2F3B;
         padding: 10px; 
         border-radius: 8px;
         color: white;
@@ -36,13 +36,17 @@ def read_sql_query(filepath):
 query_masterlist = read_sql_query('queries/fcl_masterlist.sql')
 df_masterlist = pd.read_sql_query(query_masterlist, conn)
 
+# Only keep these ACCOUNT TYPEs
+allowed_types = ["FCL PEJF", "FCL NOF", "FCL 2ND", "FCL 3RD"]
+df_masterlist = df_masterlist[df_masterlist['ACCOUNT TYPE'].isin(allowed_types)]
+
 bg_color = '#2E2F3B'
 
 # Dropdown filter for ACCOUNT TYPE
 account_types = sorted(df_masterlist['ACCOUNT TYPE'].dropna().unique().tolist())
 selected_account_type = st.selectbox("ACCOUNT TYPE", ['All'] + account_types)
 
-# Metrics (always for filtered data or all)
+# Metrics (filtered data or all)
 if selected_account_type == 'All':
     filtered_df = df_masterlist
 else:
@@ -92,7 +96,7 @@ with col_c:
 
 st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
 
-# Prepare full data for charts (always full data)
+# Prepare full data for charts (filtered only)
 summary_df = df_masterlist.groupby('ACCOUNT TYPE')['AMOUNT DUE'].sum().reset_index()
 out_balance_summary = df_masterlist.groupby('ACCOUNT TYPE')['OUT BALANCE'].sum().reset_index()
 out_balance_summary['OUT BALANCE (B)'] = out_balance_summary['OUT BALANCE'] / 1_000_000_000
@@ -110,18 +114,15 @@ fig_left = px.line(
 )
 
 if selected_account_type == 'All':
-    # Default style
     fig_left.update_traces(
         line=dict(color='#40E0D0', width=3),
         marker=dict(color='#FFD700', size=10, line=dict(color='#DAA520', width=2))
     )
 else:
-    # Dim all first
     fig_left.update_traces(
         line=dict(color='#555555', width=2),
         marker=dict(color='#888888', size=8)
     )
-    # Highlight selected point and segment
     selected_row = summary_df[summary_df['ACCOUNT TYPE'] == selected_account_type]
     if not selected_row.empty:
         fig_left.add_trace(go.Scatter(
