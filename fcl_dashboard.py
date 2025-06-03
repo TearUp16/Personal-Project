@@ -6,21 +6,6 @@ import plotly.graph_objects as go
 import numpy as np
 
 def fcl_dashboard():
-    # Centered title with border at the top
-    st.markdown("""
-        <h1 style="
-            text-align: center; 
-            border: 3px solid #2E2F3B;
-            padding: 10px; 
-            border-radius: 8px;
-            color: white;
-            background-color: #2E2F3B;
-            font-family: Arial, sans-serif;
-            ">
-            DASHBOARD
-        </h1>
-    """, unsafe_allow_html=True)
-
     conn_str = (
         "Driver={MySQL ODBC 5.1 Driver};"
         "Server=192.168.15.197;"
@@ -30,8 +15,8 @@ def fcl_dashboard():
     )
     conn = pyodbc.connect(conn_str)
 
-    def read_sql_query(filepath):
-        with open(filepath, 'r') as file:
+    def read_sql_query(filepath):   
+        with open(filepath, 'r') as file:   
             return file.read()
 
     query_masterlist = read_sql_query('queries/fcl_masterlist.sql')
@@ -43,9 +28,30 @@ def fcl_dashboard():
 
     bg_color = '#2E2F3B'
 
-    # Dropdown filter for ACCOUNT TYPE
-    account_types = sorted(df_masterlist['ACCOUNT TYPE'].dropna().unique().tolist())
-    selected_account_type = st.selectbox("ACCOUNT TYPE", ['All'] + account_types)
+    # Layout: image | title | selectbox
+    col_img, col_title, col_select = st.columns([0.6, 5.0, 1])
+
+    with col_img:
+        st.image("pag ibig.png", width=90)
+
+    with col_title:
+        st.markdown("""
+            <h1 style="
+                text-align: left; 
+                padding: 10px; 
+                color: white;
+                font-family: Arial, sans-serif;
+                margin-bottom: 0px;
+                ">
+                FORECLOSURE
+            </h1>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
+
+    with col_select:
+        account_types = sorted(df_masterlist['ACCOUNT TYPE'].dropna().unique().tolist())
+        selected_account_type = st.selectbox("", ['All'] + account_types)  # no label for cleaner layout
 
     # Metrics (filtered data or all)
     if selected_account_type == 'All':
@@ -61,8 +67,8 @@ def fcl_dashboard():
 
     with col_a:
         st.markdown(f"""
-            <div style="
-                background-color: #2E2F3B; 
+            <div style="    
+                background-color: {bg_color}; 
                 padding: 20px; 
                 border-radius: 8px; 
                 text-align: center;">
@@ -74,7 +80,7 @@ def fcl_dashboard():
     with col_b:
         st.markdown(f"""
             <div style="
-                background-color: #2E2F3B; 
+                background-color: {bg_color}; 
                 padding: 20px; 
                 border-radius: 8px; 
                 text-align: center;">
@@ -86,7 +92,7 @@ def fcl_dashboard():
     with col_c:
         st.markdown(f"""
             <div style="
-                background-color: #2E2F3B; 
+                background-color: {bg_color}; 
                 padding: 20px; 
                 border-radius: 8px; 
                 text-align: center;">
@@ -139,7 +145,7 @@ def fcl_dashboard():
         plot_bgcolor=bg_color,
         paper_bgcolor=bg_color,
         font=dict(color='white', size=12),
-        xaxis_tickangle=45,
+        xaxis_tickangle=0,
         height=350
     )
 
@@ -181,7 +187,7 @@ def fcl_dashboard():
         plot_bgcolor=bg_color,
         paper_bgcolor=bg_color,
         font=dict(color='white', size=12),
-        xaxis_tickangle=45,
+        xaxis_tickangle=0,
         showlegend=False
     )
 
